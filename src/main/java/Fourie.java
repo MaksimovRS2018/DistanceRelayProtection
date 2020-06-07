@@ -16,7 +16,6 @@ public class Fourie {
     private String number;
     private static int period = 80; //количество точек за период
     private Resistance res;
-    private boolean flag = false;
 
     Fourie(String number) {
         this.number = number;
@@ -39,8 +38,7 @@ public class Fourie {
             //расчет cos и sin составляющей для первой гармоники
             Ak1[i] = Ak1[i] + 2 * (Math.cos(count * 2 * Math.PI / period) * sumPh) / period;
             Bk1[i] = Bk1[i] + 2 * (Math.sin(count * 2 * Math.PI / period) * sumPh) / period;
-            //расчет действующе
-            // го значения для 1 гармоники по cos и sin составляющей
+            //расчет действующего начения для 1 гармоники по cos и sin составляющей
             double Ck1 = Math.sqrt((Math.pow(Ak1[i], 2) + Math.pow(Bk1[i], 2)) / 2);
             double x = Math.sqrt(Math.pow(Ck1, 2) + Math.pow(A0[i], 2));
             //для фазы, но она не нужна
@@ -63,7 +61,6 @@ public class Fourie {
 //                }
 //
 //            }
-            //суммарная составляющая
             actual_buf[count] = actualSV;
             buff.set(i, actual_buf);
             //достаем метод из mean
@@ -73,17 +70,16 @@ public class Fourie {
 
         }
 
-        if (number.equals("Current") && flag) {
+        if (number.equals("Current")) {
             vector.getVectors(Ak1, Bk1, number);
             res.getVectorsCurrent(Ak1, Bk1);
-        } else if (flag) {
+        } else  {
             res.getVectorsVoltage(Ak1, Bk1);
         }
 
         count++;
         if (count == period) {
             count = 0;
-            flag = true;
         }
     }
 
@@ -94,10 +90,6 @@ public class Fourie {
 
     public void setMeans(MeanValues means) {
         this.means = means;
-    }
-
-    public Vectors getVector() {
-        return vector;
     }
 
     public void setVector(Vectors vector) {

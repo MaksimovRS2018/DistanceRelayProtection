@@ -90,7 +90,7 @@ public class InputData {
 
                 while ((line = br.readLine()) != null) {
                     count++;
-                    if ((count > 0 && count < 4500)) {
+                    if ((count > 0 && count < 3500)) {
                         lineData = line.split(",");
 
                         if (Breaker.isState()) {
@@ -98,6 +98,7 @@ public class InputData {
                             sv.setCurrentPhB(Double.parseDouble(lineData[6]) * k1[4] + k2[4]);
                             sv.setCurrentPhC(Double.parseDouble(lineData[7]) * k1[5] + k2[5]);
                         } else {
+                            //имитация отключния выключателя
                             del = 1;
                             sv.setCurrentPhA(0);
                             sv.setCurrentPhB(0);
@@ -107,7 +108,6 @@ public class InputData {
                         sv.setVoltagePhA((Double.parseDouble(lineData[2]) * k1[0] + k2[0])*del);
                         sv.setVoltagePhB((Double.parseDouble(lineData[3]) * k1[1] + k2[1])*del);
                         sv.setVoltagePhC((Double.parseDouble(lineData[4]) * k1[2] + k2[2])*del);
-
 
                         for (Fourie fourie : filter) {
                             try {
@@ -142,6 +142,7 @@ public class InputData {
                         Charts.addAnalogData(5, 1, resistance.getResistanceAbs()[1]);
                         Charts.addAnalogData(5, 2, resistance.getResistanceAbs()[2]);
 
+                        //имитация снижения напряжения при КЗ
                         if (means.getCurrentPhA() > 0.4 || means.getCurrentPhB() > 0.4 || means.getCurrentPhC() > 0.4){
                             double maxValue1 = Math.max(means.getCurrentPhA(),means.getCurrentPhB());
                             double maxValue2 = Math.max(means.getCurrentPhB(),means.getCurrentPhC());

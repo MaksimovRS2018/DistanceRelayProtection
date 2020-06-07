@@ -1,4 +1,5 @@
 public class Breaker {
+
     public static boolean isState() {
         return state;
     }

@@ -55,7 +55,7 @@ public class Main {
 
         //Класс, необходимый для построения характеристики срабатывания
         Graf.GrafDraw();
-        InputData inD1 = new InputData("KZ2");
+        InputData inD1 = new InputData("KZ7");
         inD1.start();
 
     }
