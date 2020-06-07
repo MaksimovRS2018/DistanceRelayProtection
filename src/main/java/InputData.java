@@ -1,6 +1,9 @@
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class InputData {
 
@@ -11,71 +14,47 @@ public class InputData {
     private double[] k1;
     private double[] k2;
     private String comtradeName;
-    private int numbers;
     private String nameFile;
     private SampleValues sv = new SampleValues();
     private MeanValues means = new MeanValues();
     private ArrayList<Fourie> filter = new ArrayList<Fourie>();
+    private Resistance resistance = new Resistance();
     private OutputData od = new OutputData();
-    private Breaker breakers = new Breaker();
+    private Breaker breaker = new Breaker();
     private Vectors vectors = new Vectors();
     private boolean t = false;
+    private static int i = 0;
     private Logic logic = new Logic();
-    private FilterEmergencyComponents emerg = new FilterEmergencyComponents();
+    private double del = 1.;
+//    private FilterEmergencyComponents emerg = new FilterEmergencyComponents();
 
 
-    public InputData(String nameFile, int numbers) {
+    public InputData(String nameFile) {
         this.nameFile = nameFile;
-        this.numbers = numbers;
     }
 
-    public void start() throws FileNotFoundException {
+    public void start() throws FileNotFoundException, NoSuchMethodException {
         int period = 80; // millisec
-        double step = 0.001;
-        for (int i = 0; i < numbers; i++) {
-            filter.add(new Fourie(i));
-            filter.get(i).set();
-            filter.get(i).setSv(sv);
-            filter.get(i).setVector(vectors);
-            filter.get(i).setMeans(means);
-            filter.get(i).setPeriod(period);
+        double step = 0.00025;
+        filter.add(new Fourie("Voltage"));
+        filter.add(new Fourie("Current"));
+        for (Fourie value : filter) {
+//            value.set();
+            value.setSv(sv);
+            value.setVector(vectors);
+            value.setMeans(means);
+            value.setPeriod(period);
+            value.setRes(resistance);
         }
 
-        emerg.setFilterCurrent(filter.get(1));
+
+        logic.setResistance(resistance);
+        logic.setVector(vectors);
+        logic.setRes(resistance);
+        od.setLogic(logic);
+        od.setBreaker(breaker);
 
         try {
-            //объект класса Charts для построения графика токов в отдельном окне
-            Charts chartss = new Charts("Токи");
-            chartss.setTimeStep(step);
-            //объект класса Charts для построения графика дискретных значений в отдельном окне
-//            Charts chartsDiscrete = new Charts("Дискретные сигналы");
-//            chartsDiscrete.setTimeStep(step);
-            //генерируем серии для токов
-            String fun;
-            for (int i = 0; i < 2 * numbers; i++) {
-                if (i < 5) {
-                    fun = "М. зн." + (i + 1); //"Мгн. значение " +i+"-ого фидера"
-                } else {
-                    fun = "Д. зн. " + (i - 4); //"Действ. значение " +i+"-ого фидера"
-                }
-                chartss.createAnalogChart(fun, i);
-                chartss.addSeries("Фаза А", i, 0);
-                chartss.addSeries("Фаза B", i, 1);
-                chartss.addSeries("Фаза С", i, 2);
-            }
-
-//            logic.setVectors(vectors);
-//            //уставки для логики
-//            logic.setBlkSecondHarmonic(0.15);
-//            logic.setOd(od);
-//            logic.setBeginingDiffCurrent(1.082);
-//            logic.setCoefDrag(0.6);
-//            logic.setBeginingDragCurrent(0.9);
-//
-//            od.setBreakers(breakers);
-//            od.setSetTime(0.04);
-//            od.setTimeStep(step);
-
             //путь к файлам comtrade
             comtradeName = nameFile;
             String path = "D:\\education\\Algoritms\\Distance relay protection\\Опыты\\";
@@ -106,53 +85,75 @@ public class InputData {
                 }
                 count = 0;
                 br = new BufferedReader(new FileReader(comtrDat));
+                //получение методов из объекта sv
+                List<Method> methodsSV = Arrays.asList(sv.getClass().getDeclaredMethods());
+
                 while ((line = br.readLine()) != null) {
                     count++;
-                    if ((count > 100 && count < 4500)) {
+                    if ((count > 0 && count < 4500)) {
                         lineData = line.split(",");
-                            for (int i = 0; i <6;i++) {
-                                sv.set(i,Double.parseDouble(lineData[i+2]) * k1[i] + k2[i]);
-                                //вывод мгновенных значений
-                                chartss.addAnalogData(i/3, i%3, sv.get(i));
-                                chartss.addAnalogData((i/3+2), i%3, means.get(i));
+
+                        if (Breaker.isState()) {
+                            sv.setCurrentPhA(Double.parseDouble(lineData[5]) * k1[3] + k2[3]);
+                            sv.setCurrentPhB(Double.parseDouble(lineData[6]) * k1[4] + k2[4]);
+                            sv.setCurrentPhC(Double.parseDouble(lineData[7]) * k1[5] + k2[5]);
+                        } else {
+                            del = 1;
+                            sv.setCurrentPhA(0);
+                            sv.setCurrentPhB(0);
+                            sv.setCurrentPhC(0);
+                        }
+
+                        sv.setVoltagePhA((Double.parseDouble(lineData[2]) * k1[0] + k2[0])*del);
+                        sv.setVoltagePhB((Double.parseDouble(lineData[3]) * k1[1] + k2[1])*del);
+                        sv.setVoltagePhC((Double.parseDouble(lineData[4]) * k1[2] + k2[2])*del);
+
+
+                        for (Fourie fourie : filter) {
+                            try {
+                                fourie.calculate();
+                            } catch (ReflectiveOperationException e) {
+                                e.printStackTrace();
                             }
+                        }
+                        vectors.startCalculateReverseSeq();
+                        logic.protect();
+                        od.controlState();
 
-                            filter.forEach(Fourie::calculate);
+
+                        Charts.addAnalogData(0, 0, sv.getVoltagePhA());
+                        Charts.addAnalogData(0, 1, sv.getVoltagePhB());
+                        Charts.addAnalogData(0, 2, sv.getVoltagePhC());
+
+                        Charts.addAnalogData(1, 0, sv.getCurrentPhA());
+                        Charts.addAnalogData(1, 1, sv.getCurrentPhB());
+                        Charts.addAnalogData(1, 2, sv.getCurrentPhC());
+
+                        Charts.addAnalogData(2, 0, means.getVoltagePhA());
+                        Charts.addAnalogData(2, 1, means.getVoltagePhB());
+                        Charts.addAnalogData(2, 2, means.getVoltagePhC());
+
+                        Charts.addAnalogData(3, 0, means.getCurrentPhA());
+                        Charts.addAnalogData(3, 1, means.getCurrentPhB());
+                        Charts.addAnalogData(3, 2, means.getCurrentPhC());
+
+                        Charts.addAnalogData(4, 0, vectors.getDI2());
+                        Charts.addAnalogData(5, 0, resistance.getResistanceAbs()[0]);
+                        Charts.addAnalogData(5, 1, resistance.getResistanceAbs()[1]);
+                        Charts.addAnalogData(5, 2, resistance.getResistanceAbs()[2]);
+
+                        if (means.getCurrentPhA() > 0.4 || means.getCurrentPhB() > 0.4 || means.getCurrentPhC() > 0.4){
+                            double maxValue1 = Math.max(means.getCurrentPhA(),means.getCurrentPhB());
+                            double maxValue2 = Math.max(means.getCurrentPhB(),means.getCurrentPhC());
+                            double maxValue = Math.max(maxValue2,maxValue1);
+                            del = (0.5/maxValue);
+
+                        } else {
+                            del = 1;
+                        }
 
 
-                            //объект SV помещаем в объект filter,чтобы получать значения
-//                            filter.get(i).setSv(sv.get(i));
-                            //объект rms помещаем в объект filter,чтобы устанавливать значения
-//                            filter.get(i).setRms(rms.get(i));
-                            //расчет ортогональных составляющих
-//                            filter.get(i).calculate();
-                            //вывод средних значений
-//                            chartss.addAnalogData(i + 5, 0, rms.get(i).getPhA());
-//                            chartss.addAnalogData(i + 5, 1, rms.get(i).getPhB());
-//                            chartss.addAnalogData(i + 5, 2, rms.get(i).getPhC());
-//                            System.out.println("ФАЗА А = " + rms.get(i).getPhA());
-//                            System.out.println("ФАЗА В = " + rms.get(i).getPhB());
-//                            System.out.println("ФАЗА С = " + rms.get(i).getPhC());
-//                            i++;
-//                        }
 
-                        //отсылка векторов в логику, если токи есть
-//                        if (!t) logic.setVectors();
-                        //отключение (прекращение цикла(для имитации отключения), так как произошло срабатывание, выключатели отключены)
-//                        breakers.forEach(e -> t = t | (!e.isState()));
-                        //диф ток пофазно
-//                        chartss.addAnalogData(2 * numbers, 0, logic.getDiffCurrent()[0]);
-//                        chartss.addAnalogData(2 * numbers, 1, logic.getDiffCurrent()[1]);
-//                        chartss.addAnalogData(2 * numbers, 2, logic.getDiffCurrent()[2]);
-//                        //ток торможения пофазно
-//                        chartss.addAnalogData(2 * numbers + 1, 0, logic.getCurrentDrag()[0]);
-//                        chartss.addAnalogData(2 * numbers + 1, 1, logic.getCurrentDrag()[1]);
-//                        chartss.addAnalogData(2 * numbers + 1, 2, logic.getCurrentDrag()[2]);
-//                        //вывод дискретных значений
-//                        //сигнал блокировки (преобразование boolean -> int)
-//                        chartsDiscrete.addAnalogData(0, 0, boolToInt(od.getTripper()));
-//                        chartsDiscrete.addAnalogData(1, 0, boolToInt(od.getStr()));
-//                        chartsDiscrete.addAnalogData(2, 0, boolToInt(od.isBlk()));
                     }
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
@@ -165,10 +166,6 @@ public class InputData {
 
     }
 
-    // функция для преобразования boolean -> int
-//    public int boolToInt(boolean b) {
-//        return Boolean.compare(b, false);
-//    }
 
 
 }

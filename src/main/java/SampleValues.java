@@ -1,4 +1,6 @@
-public class SampleValues {
+import java.util.Comparator;
+
+public  class SampleValues {
 
     private double voltagePhA;
     private  double voltagePhB;
@@ -6,40 +8,6 @@ public class SampleValues {
     private double currentPhA;
     private  double currentPhB;
     private  double currentPhC;
-
-    public double get(int numberFunction){
-        if (numberFunction==0)
-            return  getVoltagePhA();
-        if (numberFunction==1) {
-            return getVoltagePhB();
-        }
-        if (numberFunction==2) {
-            return getVoltagePhC();
-        }
-        if (numberFunction==3) {
-            return getCurrentPhA();
-        }
-        if (numberFunction==4) {
-            return getCurrentPhB();
-        }
-        if (numberFunction==5) {
-            return getCurrentPhC();
-        }else {
-            return 0;
-        }
-
-    }
-
-    public void set(int phasa, double value){
-
-        if (phasa==0) setVoltagePhA(value);
-        if (phasa==1) setVoltagePhB(value);
-        if (phasa==2) setVoltagePhC(value);
-        if (phasa==3) setCurrentPhA(value);
-        if (phasa==4) setCurrentPhB(value);
-        if (phasa==5) setCurrentPhC(value);
-
-    }
 
     public double getVoltagePhA() {
         return voltagePhA;
