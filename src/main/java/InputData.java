@@ -57,7 +57,7 @@ public class InputData {
         try {
             //путь к файлам comtrade
             comtradeName = nameFile;
-            String path = "D:\\education\\Algoritms\\Distance relay protection\\Опыты\\";
+            String path = "Опыты\\";
             String cfgname = path + comtradeName + ".cfg";
             String datName = path + comtradeName + ".dat";
             comtrCfg = new File(cfgname);
